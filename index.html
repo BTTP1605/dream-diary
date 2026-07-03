@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#141230">
+<title>夢日記</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1 id="header-title">🌙 夢日記</h1>
+  <button id="btn-settings" class="icon-btn" title="設定">⚙️</button>
+</header>
+
+<main>
+
+  <!-- 一覧画面 -->
+  <section id="view-list" class="view">
+    <ul id="entry-list" class="entry-list"></ul>
+    <p id="empty-message" class="empty-message" hidden>
+      まだ夢の記録がありません。<br>
+      右下の「＋」から昨日見た夢を記録してみましょう。
+    </p>
+    <button id="btn-new" class="fab" title="新しい夢を記録">＋</button>
+  </section>
+
+  <!-- 入力画面 -->
+  <section id="view-new" class="view" hidden>
+    <h2>昨日見た夢を教えてください</h2>
+    <textarea id="dream-input" rows="8"
+      placeholder="例:気づいたら空を飛んでいて、下には見たことのない街が広がっていた…"></textarea>
+    <div class="input-actions">
+      <button id="btn-mic" class="mic-btn" title="マイクで入力">🎤 マイクで話す</button>
+      <span id="mic-status" class="mic-status"></span>
+    </div>
+    <button id="btn-save" class="primary-btn">🌙 この夢を記録する</button>
+    <button id="btn-cancel-new" class="text-btn">キャンセル</button>
+    <div id="progress" class="progress" hidden>
+      <div class="spinner"></div>
+      <p id="progress-text"></p>
+    </div>
+  </section>
+
+  <!-- 詳細画面 -->
+  <section id="view-detail" class="view" hidden>
+    <button id="btn-back" class="text-btn back-btn">← 一覧に戻る</button>
+    <div id="detail-image-wrap" class="detail-image-wrap">
+      <img id="detail-image" alt="夢のシーン">
+    </div>
+    <button id="btn-regen-image" class="secondary-btn" hidden>🖼 画像を生成する</button>
+    <p id="detail-pending" class="pending-note" hidden>
+      🖼 画像は無料の生成ネットワークで作成中です。完成すると自動でここに表示されます(数分〜数十分)。
+    </p>
+    <p id="detail-date" class="detail-date"></p>
+    <h2 id="detail-title" class="detail-title"></h2>
+    <h3>📝 概要</h3>
+    <p id="detail-summary" class="detail-text"></p>
+    <h3>🔮 夢分析</h3>
+    <p id="detail-analysis" class="detail-text"></p>
+    <h3>💬 元のテキスト</h3>
+    <p id="detail-original" class="detail-text original"></p>
+    <button id="btn-delete" class="danger-btn">この記録を削除</button>
+  </section>
+
+  <!-- 設定画面 -->
+  <section id="view-settings" class="view" hidden>
+    <button id="btn-back-settings" class="text-btn back-btn">← 戻る</button>
+    <h2>設定</h2>
+    <label for="api-key-input">Gemini APIキー</label>
+    <input type="password" id="api-key-input" placeholder="AIza...">
+    <p class="note">
+      APIキーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+      で無料で取得できます(Googleアカウントが必要)。<br>
+      キーはこの端末のブラウザ内にのみ保存され、外部には送信されません(Google APIへのリクエストを除く)。
+    </p>
+    <p class="note">
+      画像生成は、Geminiが使えない場合でも無料のFLUX.1-schnell(Hugging Face公式Space・キー不要)で
+      自動的に行われます。それも混み合っている場合は AI Horde に切り替わります。
+    </p>
+    <label for="horde-key-input">AI Horde APIキー(任意)</label>
+    <input type="password" id="horde-key-input" placeholder="未入力なら匿名で利用">
+    <p class="note">
+      Geminiの無料枠で画像生成が使えない場合、無料の共有生成ネットワーク
+      <a href="https://stablehorde.net" target="_blank" rel="noopener">AI Horde</a>
+      で画像を作ります(登録不要)。
+      <a href="https://stablehorde.net/register" target="_blank" rel="noopener">無料登録</a>
+      で取得したキーを入れると、画像完成までの順番待ちが大幅に短くなります。
+    </p>
+    <button id="btn-save-key" class="primary-btn">保存</button>
+    <p id="settings-saved" class="mic-status" hidden>✅ 保存しました</p>
+    <button id="btn-test" class="secondary-btn">🔍 接続テスト(分析と画像生成を試す)</button>
+    <p id="test-result" class="test-result"></p>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
