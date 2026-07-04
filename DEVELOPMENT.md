@@ -89,8 +89,10 @@
 
 - [x] 画像生成の代替サービス検討 → FLUX.1-schnell(HF公式Space・キー不要)を導入(2026-07-04)
 - [ ] FLUX Space経由での実生成の品質確認(日本の街並み・日本人の再現度)
-- [ ] GitHub Pagesへの公開(スマホ対応・音声入力はhttps必須)
-  - 公開時は lucid-dream-app と同じ運用ルール: gh-pagesを直接変更せず、作業ブランチ+devリポで検証後に本番反映
+- [x] GitHub Pagesへの公開(2026-07-04)
+  - 公開URL: https://bttp1605.github.io/dream-diary/
+  - リポジトリ: https://github.com/BTTP1605/dream-diary (mainブランチ / root をPagesが配信)
+  - **運用ルール**: mainがそのまま本番になるため、今後の変更は作業ブランチ+ローカル検証後にmainへマージ(lucid-dream-appと同じ方針)
 - [ ] (任意)PWA化(ホーム画面追加・オフライン閲覧)
 
 ## 5. 運用メモ
