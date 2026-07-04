@@ -9,6 +9,11 @@ const IMAGE_MODEL_STORAGE = "dreamDiary.imageModel";
 const HORDE_KEY_STORAGE = "dreamDiary.hordeKey";
 const KEY_STORAGE = "dreamDiary.apiKey";
 
+/* コミュニティ用プロキシ(Cloudflare Worker)のURL。
+   設定されている場合、会員はGemini APIキーなしで夢分析を利用できる。
+   自分のGeminiキーを設定しているユーザーは直接Geminiを呼ぶ(プロキシを経由しない) */
+const PROXY_BASE = "https://yume-nikki-proxy.yumenikki-api.workers.dev";
+
 /* ========== IndexedDB ========== */
 const DB_NAME = "dreamDiary";
 const STORE = "entries";
@@ -171,7 +176,30 @@ async function callGemini(model, body) {
   return res.json();
 }
 
+/* コミュニティ用プロキシ経由の呼び出し(会員はキー不要) */
+async function callProxy(path, text) {
+  const res = await fetch(`${PROXY_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const err = new Error(detail && detail.error ? detail.error : `プロキシ HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+function usesProxy() {
+  return !getApiKey() && !!PROXY_BASE;
+}
+
 async function analyzeDream(text) {
+  if (usesProxy()) {
+    return callProxy("/analyze", text);
+  }
   const prompt = `あなたは優しい夢分析の専門家です。以下はユーザーが見た夢の記録です。
 
 ---
@@ -495,7 +523,7 @@ async function saveDream() {
     alert("夢の内容を入力してください。");
     return;
   }
-  if (!getApiKey()) {
+  if (!getApiKey() && !PROXY_BASE) {
     alert("先に設定画面でGemini APIキーを登録してください。");
     showView("view-settings");
     return;
@@ -576,6 +604,18 @@ async function saveDream() {
 async function ensureImagePrompt(entry) {
   if (entry.imagePrompt) return entry.imagePrompt;
 
+  if (usesProxy()) {
+    try {
+      const data = await callProxy("/image-prompt", entry.originalText || entry.summary);
+      entry.imagePrompt = data.imagePrompt;
+      await dbPut(entry);
+      return entry.imagePrompt;
+    } catch (e) {
+      console.warn("英語プロンプトの生成に失敗。簡易プロンプトで代用します", e);
+      return `A dreamlike cinematic scene based on this dream: ${entry.summary} The people are Japanese and the setting is Japan unless otherwise specified.`;
+    }
+  }
+
   const req = `以下はユーザーが見た夢の記録です。この夢の最も印象的なワンシーンを画像生成AIで再現するための詳細な英語プロンプトを1つ作ってください。幻想的で映画のワンシーンのような雰囲気。夢の中で特に指定がない限り、登場人物は日本人(Japanese)、舞台は日本(Japan)とすること。出力は英語プロンプトのみ(前置きや説明は不要)。
 
 ---
@@ -600,7 +640,7 @@ ${entry.originalText || entry.summary}`;
 }
 async function regenerateDetailImage() {
   if (!currentDetailId) return;
-  if (!getApiKey()) {
+  if (!getApiKey() && !PROXY_BASE) {
     alert("先に設定画面でGemini APIキーを登録してください。");
     showView("view-settings");
     return;
@@ -653,7 +693,7 @@ async function runConnectionTest() {
   const out = document.getElementById("test-result");
   const inputKey = document.getElementById("api-key-input").value.trim();
   if (inputKey) localStorage.setItem(KEY_STORAGE, inputKey);
-  if (!getApiKey()) {
+  if (!getApiKey() && !PROXY_BASE) {
     out.textContent = "先にAPIキーを入力してください。";
     return;
   }
@@ -663,11 +703,20 @@ async function runConnectionTest() {
   const lines = [];
 
   out.textContent = "1/2 夢分析(テキスト)をテスト中…";
-  try {
-    await callGemini(TEXT_MODEL, { contents: [{ parts: [{ text: "「こんにちは」とだけ返してください。" }] }] });
-    lines.push(`✅ 夢分析 (${TEXT_MODEL}): OK`);
-  } catch (e) {
-    lines.push(`❌ 夢分析 (${TEXT_MODEL}): ${e.message}`);
+  if (usesProxy()) {
+    try {
+      await callProxy("/image-prompt", "空を飛ぶ夢");
+      lines.push("✅ 夢分析 (コミュニティ共通・キー不要): OK");
+    } catch (e) {
+      lines.push(`❌ 夢分析 (コミュニティ共通): ${e.message}`);
+    }
+  } else {
+    try {
+      await callGemini(TEXT_MODEL, { contents: [{ parts: [{ text: "「こんにちは」とだけ返してください。" }] }] });
+      lines.push(`✅ 夢分析 (${TEXT_MODEL}): OK`);
+    } catch (e) {
+      lines.push(`❌ 夢分析 (${TEXT_MODEL}): ${e.message}`);
+    }
   }
 
   out.textContent = lines.join("\n") + "\n2/2 画像生成をテスト中…(使えるモデルを自動検出しています。1分ほどかかることがあります)";
