@@ -12,7 +12,7 @@ const KEY_STORAGE = "dreamDiary.apiKey";
 /* コミュニティ用プロキシ(Cloudflare Worker)のURL。
    設定されている場合、会員はGemini APIキーなしで夢分析を利用できる。
    自分のGeminiキーを設定しているユーザーは直接Geminiを呼ぶ(プロキシを経由しない) */
-const PROXY_BASE = ""; // 例: "https://yume-nikki-proxy.xxxx.workers.dev"
+const PROXY_BASE = "https://yume-nikki-proxy.yumenikki-api.workers.dev";
 
 /* ========== IndexedDB ========== */
 const DB_NAME = "dreamDiary";
