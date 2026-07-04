@@ -95,7 +95,38 @@
   - **運用ルール**: mainがそのまま本番になるため、今後の変更は作業ブランチ+ローカル検証後にmainへマージ(lucid-dream-appと同じ方針)
 - [ ] (任意)PWA化(ホーム画面追加・オフライン閲覧)
 
-## 5. 運用メモ
+## 5. コミュニティ運用(キー不要化)
+
+約20名のコミュニティ会員に、**APIキー設定なし**で使ってもらうための構成(2026-07-04実装)。
+
+### 仕組み
+
+- Cloudflare Worker(無料プラン)を「夢分析専用の中継サーバー」にする(`worker/gemini-proxy.js`)。
+- Geminiキーは**WorkerのSecretにのみ保存**。会員の端末やアプリのコードには一切含まれない。
+- Workerは `/analyze`(夢分析)と `/image-prompt`(英語プロンプト生成)の2エンドポイントのみ。
+  プロンプトはサーバー側に固定されているため、汎用のGemini中継としては悪用できない。
+- 許可オリジン(公開サイトとlocalhost)以外からのリクエストは403で拒否。
+- アプリ側は `app.js` 冒頭の `PROXY_BASE` にWorkerのURLを設定すると有効になる。
+  自分のGeminiキーを設定しているユーザーは従来どおり直接Geminiを呼ぶ(プロキシ不使用)。
+- 画像生成は元からキー不要(FLUX Space / AI Horde)のため変更なし。
+
+### 料金について
+
+- Gemini無料枠は**課金情報を登録しない限り請求が発生しない**(上限到達時はエラーになるだけ。翌日リセット)。
+- Cloudflare Workers無料プラン(1日10万リクエスト)も同様にカード登録不要。
+- 20名×1日1〜2回の利用なら、Geminiテキスト無料枠(flash→flash-lite自動フォールバック)で収まる想定。
+
+### オーナーのセットアップ手順(初回のみ)
+
+1. https://dash.cloudflare.com/sign-up でCloudflare無料アカウントを作成(カード不要)
+2. ダッシュボード → **Workers & Pages** → **Create** → **Create Worker** → 名前を `yume-nikki-proxy` などにして **Deploy**
+3. **Edit code** を開き、`worker/gemini-proxy.js` の内容をすべて貼り付けて **Deploy**
+4. Workerの **Settings → Variables and Secrets** → **Add** → Type: **Secret**、
+   Variable name: `GEMINI_API_KEY`、Value: 自分のGeminiキー → **Save**
+5. Workerの URL(`https://yume-nikki-proxy.xxxx.workers.dev`)を控えて、
+   アプリ側 `app.js` の `PROXY_BASE` に設定 → 検証後にmainへマージして公開
+
+## 6. 運用メモ
 
 - Gemini APIキー: https://aistudio.google.com/apikey (無料・カード不要)
 - FLUX.1-schnell Space: https://huggingface.co/spaces/black-forest-labs/FLUX.1-schnell (キー不要・アプリが自動利用)
