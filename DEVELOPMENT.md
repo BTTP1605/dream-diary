@@ -116,6 +116,16 @@
 - Cloudflare Workers無料プラン(1日10万リクエスト)も同様にカード登録不要。
 - 20名×1日1〜2回の利用なら、Geminiテキスト無料枠(flash→flash-lite自動フォールバック)で収まる想定。
 
+### レート制限(2026-07-04追加)
+
+- OriginヘッダーはHTTPクライアントから偽装可能なため、第三者のタダ乗り対策として
+  Workerに**1日あたりの回数制限**(IPごと40回 / 全体400回)を実装。超過時は429を返す。
+- 有効化にはCloudflare KVが必要(無料):
+  1. ダッシュボード → **Storage & Databases → KV** → **Create a namespace** → 名前 `yume-nikki-rate`
+  2. Worker → **Settings → Bindings → Add → KV namespace** → Variable name: `RATE_LIMIT`、Namespaceに上記を選択 → Save
+  3. Workerのコードを最新の `worker/gemini-proxy.js` に貼り替えて Deploy
+- KVバインディング未設定の場合、制限なしで従来どおり動作する(段階導入可)。
+
 ### オーナーのセットアップ手順(初回のみ)
 
 1. https://dash.cloudflare.com/sign-up でCloudflare無料アカウントを作成(カード不要)

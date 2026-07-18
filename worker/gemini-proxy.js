@@ -37,6 +37,13 @@ export default {
       return jsonRes({ error: "not found" }, 404, cors);
     }
 
+    // レート制限(KVバインディング RATE_LIMIT があるときのみ有効)。
+    // Originはブラウザ以外から偽装できるため、タダ乗りされても1日の被害を上限で抑える
+    if (env.RATE_LIMIT) {
+      const limited = await checkRateLimit(env, request);
+      if (limited) return jsonRes({ error: limited }, 429, cors);
+    }
+
     let body;
     try {
       body = await request.json();
@@ -64,6 +71,37 @@ export default {
     }
   },
 };
+
+/* ---------- レート制限(1日あたり) ---------- */
+
+const DAILY_LIMIT_PER_IP = 40;   // 1人(IP)あたり
+const DAILY_LIMIT_GLOBAL = 400;  // コミュニティ全体
+
+async function checkRateLimit(env, request) {
+  try {
+    const day = new Date().toISOString().slice(0, 10);
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    const ipKey = `ip:${day}:${ip}`;
+    const globalKey = `all:${day}`;
+    const [ipCount, globalCount] = await Promise.all([
+      env.RATE_LIMIT.get(ipKey),
+      env.RATE_LIMIT.get(globalKey),
+    ]);
+    if (Number(globalCount || 0) >= DAILY_LIMIT_GLOBAL) {
+      return "本日のコミュニティ全体の利用上限に達しました。明日また試してください";
+    }
+    if (Number(ipCount || 0) >= DAILY_LIMIT_PER_IP) {
+      return "本日の利用上限に達しました。明日また試してください";
+    }
+    await Promise.all([
+      env.RATE_LIMIT.put(ipKey, String(Number(ipCount || 0) + 1), { expirationTtl: 172800 }),
+      env.RATE_LIMIT.put(globalKey, String(Number(globalCount || 0) + 1), { expirationTtl: 172800 }),
+    ]);
+  } catch (_) {
+    // KVの一時的な障害時は制限なしで続行(会員のサービス停止の方を避ける)
+  }
+  return null;
+}
 
 function jsonRes(obj, status, cors) {
   return new Response(JSON.stringify(obj), {
