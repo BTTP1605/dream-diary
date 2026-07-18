@@ -125,6 +125,11 @@
   2. Worker → **Settings → Bindings → Add → KV namespace** → Variable name: `RATE_LIMIT`、Namespaceに上記を選択 → Save
   3. Workerのコードを最新の `worker/gemini-proxy.js` に貼り替えて Deploy
 - KVバインディング未設定の場合、制限なしで従来どおり動作する(段階導入可)。
+- **2026-07-04 本番反映・動作確認済み**(KV名前空間 `yume-nikki-rate` を `RATE_LIMIT` としてバインド、
+  41回目で429を返すことを実測)。
+- 既知の限界: KVは「同一キーへの書き込みは1秒1回まで」かつ結果整合のため、**極端な高速連打には
+  カウントが追いつかず一部すり抜ける**(ベストエフォート)。ただし本ケースは金銭被害ゼロ・日次リセットのため許容。
+  より厳密にしたい場合はCloudflareのネイティブ Rate Limiting バインディング(毎分制限)への移行を検討。
 
 ### オーナーのセットアップ手順(初回のみ)
 
