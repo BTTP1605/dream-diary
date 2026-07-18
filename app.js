@@ -83,10 +83,14 @@ function showView(id) {
 }
 
 /* ========== 一覧 ========== */
+let listImageUrls = []; // サムネイル用Object URL。再描画時に解放する
+
 async function renderList() {
   const entries = (await dbGetAll()).sort((a, b) => b.id - a.id);
   const list = document.getElementById("entry-list");
   list.innerHTML = "";
+  listImageUrls.forEach(u => URL.revokeObjectURL(u));
+  listImageUrls = [];
   document.getElementById("empty-message").hidden = entries.length > 0;
 
   for (const e of entries) {
@@ -96,7 +100,11 @@ async function renderList() {
     const img = document.createElement("img");
     img.className = "entry-thumb";
     img.alt = "";
-    if (e.image) img.src = URL.createObjectURL(e.image);
+    if (e.image) {
+      const url = URL.createObjectURL(e.image);
+      listImageUrls.push(url);
+      img.src = url;
+    }
 
     const info = document.createElement("div");
     info.className = "entry-info";
@@ -128,6 +136,11 @@ async function openDetail(id) {
 
   const wrap = document.getElementById("detail-image-wrap");
   const img = document.getElementById("detail-image");
+  if (detailImageUrl) {
+    // 詳細画面を開いたまま再表示(画像の再生成・自動取り込み)した場合の解放漏れを防ぐ
+    URL.revokeObjectURL(detailImageUrl);
+    detailImageUrl = null;
+  }
   if (e.image) {
     detailImageUrl = URL.createObjectURL(e.image);
     img.src = detailImageUrl;
@@ -357,6 +370,10 @@ async function generateImageFluxSpace(imagePrompt) {
 /* 速い手段から順に試す: Gemini(無料枠があれば)→ FLUX Space(キー不要)。
    どちらも不可なら例外(呼び出し側でAI Hordeにフォールバック) */
 async function generateImageFast(imagePrompt) {
+  // 個人のGeminiキーが無ければGemini画像系は必ず失敗するため、無駄な試行をせず直接FLUXへ
+  if (!getApiKey()) {
+    return generateImageFluxSpace(imagePrompt);
+  }
   try {
     return await generateImage(imagePrompt);
   } catch (geminiError) {
@@ -722,6 +739,7 @@ async function runConnectionTest() {
   out.textContent = lines.join("\n") + "\n2/2 画像生成をテスト中…(使えるモデルを自動検出しています。1分ほどかかることがあります)";
   localStorage.removeItem(IMAGE_MODEL_STORAGE); // 毎回ゼロから検出し直す
   try {
+    if (!getApiKey()) throw new Error("Gemini APIキー未設定(キー不要モードのため試行せず)");
     await generateImage("A simple watercolor illustration of a crescent moon in a night sky");
     lines.push(`✅ 画像生成 (Gemini): OK(使用モデル: ${localStorage.getItem(IMAGE_MODEL_STORAGE)})`);
   } catch (e) {
