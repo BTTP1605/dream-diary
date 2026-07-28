@@ -110,6 +110,14 @@ PHP一式は本リポジトリ `server/` に格納
 - dream-diary の静的ファイル(HTML/JS)自体は公開のままで良い(秘密を含まない)。ゲートするのはAPIのみ
 - 効果: 「Origin偽装でタダ乗り可能」問題が構造的に解消。レート制限も会員Cookie単位に変更
 
+**本番反映・E2E検証済み(2026-07-29)**: `server/unlock.php`(/app/unlock.php)+
+`_lib.php` の require_member() で稼働中。検証項目: Cookieなし403+案内文 / 誤トークン403 /
+正トークン302+HttpOnly・Secure・path=/app/ Cookie / 正Cookieでゲート通過 / 改ざんCookie403 /
+会員として夢分析200 / 誤トークン連打11回目で429(総当たり対策)。
+解錠リンクとトークンは `xserver-deploy/UNLOCK-LINKS.local.md`(Git管理外)に記録。
+アプリ側はプロキシ403時にサーバーの案内文をそのまま表示する(app.js saveDream)。
+※日次レート制限の会員単位化は未着手(現状IP単位のまま。実害がないため優先度低)
+
 ### lucid-dream-app の会員ゲート(決定済み: dream-diaryと同方式でゲートする)
 
 - 会員Cookieは path=/app/ で発行するため、**1回の解錠で /app/ 配下の全アプリ

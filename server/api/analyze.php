@@ -4,6 +4,7 @@ declare(strict_types=1);
 // 夢分析エンドポイント: POST {text} -> {title, summary, analysis, imagePrompt}
 require __DIR__ . '/_lib.php';
 
+require_member();
 $text = read_text_input();
 $raw = call_gemini(analyze_prompt($text), analyze_schema());
 $parsed = json_decode($raw, true);
