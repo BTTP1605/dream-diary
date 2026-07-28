@@ -30,7 +30,8 @@ localStorage・IndexedDB・Cookieの空間をゲームと共有する。緩和�
 - **Phase 1**: 静的ファイル移行 + Gemini中継のPHP化(Cloudflare Worker廃止)
 - **Phase 2**: 会員ゲート(ゲームと同じ署名Cookie方式)
 - **Phase 3**: 夢日記のサーバー保存・端末間同期
-- lucid-dream-app はPhase 1(+2)のみで完了(サーバー機能不要)
+- lucid-dream-app は **dream-diary の移行完了後に着手**。Phase 1+2相当のみで完了
+  (サーバー機能は不要だが、会員ゲートは dream-diary と同方式で実装する。§3)
 
 ## 2. Phase 1: 静的移行とPHPプロキシ
 
@@ -92,8 +93,20 @@ app/
   → 以後 `api/*.php` はCookie検証を通った場合のみ応答
 - ゲームと違いnote購入導線がないため、**referer検証は行わない**(コミュニティ投稿からの遷移のみ)
 - トークンはゲーム同様 `config.php` で無効化・差し替え可能(再ビルド不要)
-- 静的ファイル(HTML/JS)自体は公開のままで良い(秘密を含まない)。ゲートするのはAPIのみ
+- dream-diary の静的ファイル(HTML/JS)自体は公開のままで良い(秘密を含まない)。ゲートするのはAPIのみ
 - 効果: 「Origin偽装でタダ乗り可能」問題が構造的に解消。レート制限も会員Cookie単位に変更
+
+### lucid-dream-app の会員ゲート(決定済み: dream-diaryと同方式でゲートする)
+
+- 会員Cookieは path=/app/ で発行するため、**1回の解錠で /app/ 配下の全アプリ
+  (夢日記・明晰夢)が使える**。アプリごとの解錠リンク配布は不要
+- lucid-dream にはAPIがないため、ページ本体をゲートする:
+  - ビルド出力の `index.html` は `_private/lucid-dream-index.html` に置き(Web直アクセス不可)、
+    公開側は `index.php` が会員Cookieを検証してからその中身を出力する。
+    未解錠なら解錠案内ページを表示(`DirectoryIndex index.php` を設定)
+  - JS/CSS/音声などのアセットは公開のまま(秘密を含まず、単体では意味を持たないため実害なし。
+    厳密にゲートしたくなったらRewriteで全アセットをPHP経由配信に変更可能だが初期は不要)
+  - デプロイスクリプト(§2)が `npm run build` 後の index.html 移設まで自動化する
 
 ## 4. Phase 3: サーバー保存・端末間同期(dream-diary)
 
@@ -192,7 +205,7 @@ CSP(`Content-Security-Policy`)はdream-diary/lucid-dreamで要件が異なるた
 ## 7. 決めごと・未決事項
 
 - [ ] `/app/` のまま行くか `app.bttp.info` にするか(§0。現方針は `/app/`)
-- [ ] lucid-dream の会員ゲート要否(APIがないため、ゲートするなら静的HTML自体をPHP経由配信にする必要あり。
-      非公開の必然性が薄ければ公開のままを推奨)
+- [x] lucid-dream の会員ゲート → **実装する**(2026-07-29決定。dream-diaryと同方式、
+      index.php経由配信。§3参照。着手はdream-diary移行完了後)
 - [ ] Phase 3 のリリース時期(Phase 1-2 と同時か、移行が落ち着いてからか)
 - [ ] Horde画像取得先のCSP実測(§5)
