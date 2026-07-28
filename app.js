@@ -762,6 +762,139 @@ async function runConnectionTest() {
   btn.disabled = false;
 }
 
+/* ========== バックアップ(書き出し/読み込み) ==========
+   機種変更や引っ越し(別URLへの移行)の際、IndexedDBの記録は自動では引き継がれないため、
+   画像込みの全記録を1つのJSONファイルとして書き出し/読み込みできるようにする */
+const BACKUP_FORMAT = 1;
+
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(blob);
+  });
+}
+
+function dataURLToBlob(dataURL) {
+  const comma = dataURL.indexOf(",");
+  if (!dataURL.startsWith("data:") || comma < 0) throw new Error("画像データの形式が不正です");
+  const mime = (dataURL.slice(5, comma).match(/^[^;]+/) || ["image/webp"])[0];
+  const bin = atob(dataURL.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+async function exportBackup() {
+  const btn = document.getElementById("btn-export");
+  const status = document.getElementById("backup-status");
+  btn.disabled = true;
+  status.textContent = "書き出し中…";
+  try {
+    const entries = (await dbGetAll()).sort((a, b) => a.id - b.id);
+    const items = [];
+    for (const e of entries) {
+      const item = {
+        id: e.id,
+        title: e.title,
+        summary: e.summary,
+        analysis: e.analysis,
+        originalText: e.originalText,
+      };
+      if (e.imagePrompt) item.imagePrompt = e.imagePrompt;
+      if (e.image) item.imageDataURL = await blobToDataURL(e.image);
+      // pendingJob(AI Horde順番待ち)は他の端末では引き継げないため含めない
+      items.push(item);
+    }
+    const payload = {
+      app: "dream-diary",
+      format: BACKUP_FORMAT,
+      exportedAt: new Date().toISOString(),
+      entries: items,
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const d = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    a.download = `yume-nikki-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    status.textContent = `✅ ${items.length}件の記録を書き出しました。ファイルは大切に保管してください。`;
+  } catch (e) {
+    console.error(e);
+    status.textContent = `❌ 書き出しに失敗しました: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function importBackup(file) {
+  const status = document.getElementById("backup-status");
+  status.textContent = "読み込み中…";
+  try {
+    let payload;
+    try {
+      payload = JSON.parse(await file.text());
+    } catch (_) {
+      throw new Error("JSONファイルとして読み取れませんでした");
+    }
+    if (!payload || payload.app !== "dream-diary" || !Array.isArray(payload.entries)) {
+      throw new Error("夢日記のバックアップファイルではありません");
+    }
+    const existing = new Map((await dbGetAll()).map(e => [e.id, e]));
+    let added = 0, filled = 0, skipped = 0;
+    for (const item of payload.entries) {
+      if (!Number.isFinite(item.id) || typeof item.originalText !== "string") {
+        skipped++;
+        continue;
+      }
+      const entry = {
+        id: item.id,
+        title: String(item.title || "(無題)"),
+        summary: String(item.summary || ""),
+        analysis: String(item.analysis || ""),
+        originalText: item.originalText,
+      };
+      if (item.imagePrompt) entry.imagePrompt = String(item.imagePrompt);
+      if (typeof item.imageDataURL === "string") {
+        try {
+          entry.image = dataURLToBlob(item.imageDataURL);
+        } catch (_) { /* 画像だけ壊れていても本文は取り込む */ }
+      }
+      const cur = existing.get(entry.id);
+      if (!cur) {
+        await dbPut(entry);
+        added++;
+      } else if (!cur.image && entry.image) {
+        cur.image = entry.image; // 同じ記録が画像なしで存在する場合は画像だけ補完
+        await dbPut(cur);
+        filled++;
+      } else {
+        skipped++; // 既にある記録は上書きしない
+      }
+    }
+    await renderList();
+    status.textContent = `✅ 読み込み完了: 追加 ${added}件 / 画像補完 ${filled}件 / 既存のためスキップ ${skipped}件`;
+  } catch (e) {
+    console.error(e);
+    status.textContent = `❌ 読み込みに失敗しました: ${e.message}`;
+  }
+}
+
+function setupBackup() {
+  document.getElementById("btn-export").addEventListener("click", exportBackup);
+  const fileInput = document.getElementById("import-file");
+  document.getElementById("btn-import").addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    fileInput.value = ""; // 同じファイルをもう一度選んでもchangeが発火するようにする
+    if (file) importBackup(file);
+  });
+}
+
 /* ========== 音声入力 ========== */
 let recognition = null;
 let recognizing = false;
@@ -867,6 +1000,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setupMic();
   setupSettings();
+  setupBackup();
   await renderList();
   showView("view-list");
 

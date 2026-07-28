@@ -92,6 +92,16 @@
     <p id="settings-saved" class="mic-status" hidden>✅ 保存しました</p>
     <button id="btn-test" class="secondary-btn">🔍 接続テスト(分析と画像生成を試す)</button>
     <p id="test-result" class="test-result"></p>
+
+    <h3>💾 データのバックアップ</h3>
+    <p class="note">
+      夢の記録(画像を含む)を1つのファイルに書き出せます。機種変更やアプリの引っ越しの際は、
+      移動先で「ファイルから読み込む」を押すと記録を復元できます。APIキーはファイルに含まれません。
+    </p>
+    <button id="btn-export" class="secondary-btn">⬇️ 記録をファイルに書き出す</button>
+    <button id="btn-import" class="secondary-btn">⬆️ ファイルから読み込む</button>
+    <input type="file" id="import-file" accept=".json,application/json" hidden>
+    <p id="backup-status" class="test-result"></p>
   </section>
 
 </main>
