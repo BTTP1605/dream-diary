@@ -1,0 +1,10 @@
+# /app/.htaccess  (app/ 直下の共通設定。デプロイスクリプトが配置する)
+
+# Web非公開領域を全遮断(設定・DB・画像の実体)
+RedirectMatch 403 ^/app/_private/
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "no-referrer"
+  Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
