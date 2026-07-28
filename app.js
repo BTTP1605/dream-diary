@@ -603,7 +603,10 @@ async function saveDream() {
     }
   } catch (e) {
     console.error(e);
-    if (e.status === 400 || e.status === 403) {
+    if (e.status === 403 && usesProxy()) {
+      // 会員ゲート等、サーバーからの案内をそのまま表示する
+      alert(e.message);
+    } else if (e.status === 400 || e.status === 403) {
       alert("APIキーが正しくないようです。設定画面で確認してください。");
     } else if (e.status === 429) {
       alert("本日の無料利用枠の上限に達した可能性があります。少し時間をおいて試してください。");

@@ -11,4 +11,8 @@ return [
   // レート制限(1日あたり)。Worker版の値を踏襲
   'daily_limit_ip'     => 40,
   'daily_limit_global' => 400,
+
+  // 会員ゲート(Phase 2)。どちらもランダム値(ローカルのセットアップスクリプトが自動生成する)
+  'secret'       => 'ここにHMAC用の64文字ランダム16進数',
+  'member_token' => 'ここに解錠リンク用トークン',
 ];

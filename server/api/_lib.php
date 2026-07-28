@@ -68,6 +68,59 @@ function cleanup_old_counters(string $dir): void {
   }
 }
 
+/* ---------- 会員ゲート(署名HttpOnly Cookie。ゲーム解錠システムと同方式) ----------
+   /app/unlock.php?t=<TOKEN> を開くと発行される。path=/app/ のため
+   配下の全アプリ(夢日記・明晰夢)で共通に使える */
+
+function member_sign(string $msg): string {
+  return hash_hmac('sha256', $msg, (string) cfg()['secret']);
+}
+
+// Cookie値: base64url( "member|exp|hmac(member|exp)" )
+function make_member_cookie(int $exp): string {
+  $payload = 'member|' . $exp;
+  $raw = $payload . '|' . member_sign($payload);
+  return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+}
+
+function verify_member_cookie(): bool {
+  $raw = $_COOKIE['app_member'] ?? '';
+  if ($raw === '') return false;
+  $decoded = base64_decode(strtr($raw, '-_', '+/'), true);
+  if ($decoded === false) return false;
+  $parts = explode('|', $decoded);
+  if (count($parts) !== 3) return false;
+  [$label, $exp, $sig] = $parts;
+  if ($label !== 'member') return false;
+  if ((int) $exp < time()) return false;
+  return hash_equals(member_sign($label . '|' . $exp), $sig);
+}
+
+function require_member(): void {
+  if (!verify_member_cookie()) {
+    json_out([
+      'error' => 'このアプリはコミュニティ会員専用になりました。コミュニティで案内している解錠リンクを一度開いてから、もう一度お試しください。',
+    ], 403);
+  }
+}
+
+// 短時間の試行回数制限(解錠リンクの総当たり対策。ゲームのrate_okと同方式)
+function attempt_rate_ok(string $bucket, int $limit, int $windowSec = 60): bool {
+  $dir = __DIR__ . '/../../_private/ratelimit';
+  if (!is_dir($dir)) @mkdir($dir, 0700, true);
+  $file = $dir . '/win_' . $bucket . '_' . hash('sha256', client_ip()) . '.json';
+  $now = time();
+  $data = ['t' => $now, 'n' => 0];
+  if (is_file($file)) {
+    $raw = @file_get_contents($file);
+    $d = $raw ? json_decode($raw, true) : null;
+    if (is_array($d) && ($now - (int)($d['t'] ?? 0)) < $windowSec) $data = $d;
+  }
+  $data['n'] = (int)($data['n'] ?? 0) + 1;
+  @file_put_contents($file, json_encode($data), LOCK_EX);
+  return $data['n'] <= $limit;
+}
+
 /* ---------- リクエスト処理 ---------- */
 
 // POST本文から夢のテキストを取り出す(最大4000文字)。レート制限もここで適用
