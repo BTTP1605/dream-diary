@@ -12,7 +12,14 @@ return [
   'daily_limit_ip'     => 40,
   'daily_limit_global' => 400,
 
-  // 会員ゲート(Phase 2)。どちらもランダム値(ローカルのセットアップスクリプトが自動生成する)
-  'secret'       => 'ここにHMAC用の64文字ランダム16進数',
-  'member_token' => 'ここに解錠リンク用トークン',
+  // 会員ゲート(Phase 2)。ランダム値はローカルのセットアップスクリプトが自動生成する
+  'secret' => 'ここにHMAC用の64文字ランダム16進数',
+
+  // アプリごとの解錠トークン(ゲームのconfigと同構造)。
+  // 解錠リンク: /app/unlock.php?a=<キー名>&t=<token>
+  // 無効化はここの active を false にするか token を差し替えるだけ(再デプロイ不要)
+  'apps' => [
+    'dream-diary' => ['token' => 'ここに夢日記用トークン', 'active' => true],
+    // 'lucid-dream' => ['token' => '移行時に追加', 'active' => true],
+  ],
 ];

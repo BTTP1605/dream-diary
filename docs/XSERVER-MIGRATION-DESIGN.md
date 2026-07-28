@@ -102,26 +102,31 @@ PHP一式は本リポジトリ `server/` に格納
 
 ゲームの解錠システムと同じ方式(検証済みのコードを流用):
 
-- コミュニティ内で `https://bttp.info/app/unlock.php?t=<TOKEN>` を告知
-  → PHPがトークン+レート制限を検証 → **署名(HMAC)つきHttpOnly Cookie(1年・path=/app/)** を発行
-  → 以後 `api/*.php` はCookie検証を通った場合のみ応答
+- **アプリごとに専用の解錠リンクを配る**(2026-07-29決定。ゲームの unlock.php?g=&t= と同構造):
+  `https://bttp.info/app/unlock.php?a=<アプリ名>&t=<TOKEN>`
+  → PHPがトークン+レート制限を検証 → **署名(HMAC)つきHttpOnly Cookie
+  (1年・path=/app/<アプリ名>/・名前 unlock_app_<アプリ名>)** を発行
+  → 以後 `api/*.php` はCookie検証を通った場合のみ応答。
+  Cookieのpathをアプリ配下に限定しているため、他アプリには送られない
 - ゲームと違いnote購入導線がないため、**referer検証は行わない**(コミュニティ投稿からの遷移のみ)
 - トークンはゲーム同様 `config.php` で無効化・差し替え可能(再ビルド不要)
 - dream-diary の静的ファイル(HTML/JS)自体は公開のままで良い(秘密を含まない)。ゲートするのはAPIのみ
 - 効果: 「Origin偽装でタダ乗り可能」問題が構造的に解消。レート制限も会員Cookie単位に変更
 
 **本番反映・E2E検証済み(2026-07-29)**: `server/unlock.php`(/app/unlock.php)+
-`_lib.php` の require_member() で稼働中。検証項目: Cookieなし403+案内文 / 誤トークン403 /
-正トークン302+HttpOnly・Secure・path=/app/ Cookie / 正Cookieでゲート通過 / 改ざんCookie403 /
-会員として夢分析200 / 誤トークン連打11回目で429(総当たり対策)。
+`_lib.php` の require_app('dream-diary') で稼働中。当初は/app/共通Cookieだったが、
+同日中に**アプリごとの専用リンク・専用Cookie方式へ変更**(config `apps` 配列で管理)。
+検証項目: Cookieなし403+案内文 / 旧形式(?t=のみ)403 / 別アプリ名403 /
+正リンク302+HttpOnly・Secure・path=/app/dream-diary/ Cookie / 正Cookieでゲート通過 /
+改ざんCookie403 / 会員として夢分析200 / 誤トークン連打で429(総当たり対策)。
 解錠リンクとトークンは `xserver-deploy/UNLOCK-LINKS.local.md`(Git管理外)に記録。
 アプリ側はプロキシ403時にサーバーの案内文をそのまま表示する(app.js saveDream)。
 ※日次レート制限の会員単位化は未着手(現状IP単位のまま。実害がないため優先度低)
 
 ### lucid-dream-app の会員ゲート(決定済み: dream-diaryと同方式でゲートする)
 
-- 会員Cookieは path=/app/ で発行するため、**1回の解錠で /app/ 配下の全アプリ
-  (夢日記・明晰夢)が使える**。アプリごとの解錠リンク配布は不要
+- **明晰夢にも専用の解錠リンクを発行する**(`unlock.php?a=lucid-dream&t=<専用TOKEN>`)。
+  configの `apps` 配列に1行追加するだけで対応できる
 - lucid-dream にはAPIがないため、ページ本体をゲートする:
   - ビルド出力の `index.html` は `_private/lucid-dream-index.html` に置き(Web直アクセス不可)、
     公開側は `index.php` が会員Cookieを検証してからその中身を出力する。

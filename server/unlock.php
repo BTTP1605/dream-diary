@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 // 会員解錠エンドポイント(デプロイ先: /app/unlock.php)
 //
-// コミュニティ内で案内するリンク: https://bttp.info/app/unlock.php?t=<TOKEN>
-// 正しいトークンなら署名HttpOnly Cookie(1年・path=/app/)を発行し、夢日記へ転送する。
-// ゲームの unlock.php と同方式。note購入導線がないため参照元検証は行わない。
-// トークンの無効化・差し替えは /app/_private/config.php の member_token 変更のみ(再デプロイ不要)。
+// アプリごとに専用リンクを配る(ゲームの unlock.php?g=&t= と同方式):
+//   https://bttp.info/app/unlock.php?a=dream-diary&t=<TOKEN>
+// 正しいトークンなら署名HttpOnly Cookie(1年・path=/app/<アプリ名>/)を発行し、
+// そのアプリへ転送する。note購入導線がないため参照元検証は行わない。
+// トークンの無効化・差し替えは /app/_private/config.php の apps 配列の変更のみ(再デプロイ不要)。
 
 require __DIR__ . '/dream-diary/api/_lib.php';
 
@@ -28,21 +29,23 @@ if (!attempt_rate_ok('unlock', 10)) {
     '<h2>試行回数が多すぎます</h2><p>1分ほど待ってから、もう一度お試しください。</p>', 429);
 }
 
+$app   = (string) ($_GET['a'] ?? '');
 $token = (string) ($_GET['t'] ?? '');
-$cfgToken = (string) (cfg()['member_token'] ?? '');
-if ($token === '' || $cfgToken === '' || !hash_equals($cfgToken, $token)) {
+$entry = (cfg()['apps'] ?? [])[$app] ?? null; // $appはconfigのキーと一致した場合のみ以降で使う
+if ($entry === null || empty($entry['active']) || $token === ''
+    || !hash_equals((string) $entry['token'], $token)) {
   html_out('リンクが無効です',
     '<h2>解錠リンクが無効です</h2><p>コミュニティ内で案内している最新のリンクから、もう一度開いてください。</p>', 403);
 }
 
 $exp = time() + 365 * 24 * 60 * 60; // 1年
-setcookie('app_member', make_member_cookie($exp), [
+setcookie('unlock_app_' . $app, make_app_cookie($app, $exp), [
   'expires'  => $exp,
-  'path'     => '/app/',
+  'path'     => '/app/' . $app . '/', // このアプリ専用。他アプリには送られない
   'secure'   => true,
   'httponly' => true,
   'samesite' => 'Lax',
 ]);
 
-header('Location: /app/dream-diary/', true, 302);
+header('Location: /app/' . rawurlencode($app) . '/', true, 302);
 exit;
