@@ -68,7 +68,10 @@ app/
 - Worker版からの改善: GeminiキーをURLクエリでなく専用ヘッダー(x-goog-api-key)で送る
   (アクセスログ類にキーが残らない)
 
-**実装済み(2026-07-29)**: PHP一式は本リポジトリ `server/` に格納
+**本番反映・E2E検証済み(2026-07-29)**: https://bttp.info/app/dream-diary/ で稼働中。
+検証項目: index 200 / `_private/config.php` 403 / `_lib.php` 403 / GET 404 / 空text 400 /
+analyze・image-prompt 本番呼び出し200(スキーマ・文字数とも仕様どおり) / 本番ドメインでPROXY_BASE="api"自動選択。
+PHP一式は本リポジトリ `server/` に格納
 (`server/api/*.php`、`server/htaccess-*`、`server/_private/`)。
 アプリ側は `app.js` の PROXY_BASE が `location.hostname` で自動切替
 (bttp.info→同一オリジン `api`、それ以外→Worker)。
