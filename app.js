@@ -9,10 +9,13 @@ const IMAGE_MODEL_STORAGE = "dreamDiary.imageModel";
 const HORDE_KEY_STORAGE = "dreamDiary.hordeKey";
 const KEY_STORAGE = "dreamDiary.apiKey";
 
-/* コミュニティ用プロキシ(Cloudflare Worker)のURL。
-   設定されている場合、会員はGemini APIキーなしで夢分析を利用できる。
+/* コミュニティ用プロキシのURL。会員はGemini APIキーなしで夢分析を利用できる。
+   - エックスサーバー版(bttp.info): 同一オリジンのPHP(api/。拡張子は.htaccessのRewriteで解決)
+   - GitHub Pages版: 併存期間中のみCloudflare Workerを使う(移行完了後にWorkerごと廃止)
    自分のGeminiキーを設定しているユーザーは直接Geminiを呼ぶ(プロキシを経由しない) */
-const PROXY_BASE = "https://yume-nikki-proxy.yumenikki-api.workers.dev";
+const PROXY_BASE = /(^|\.)bttp\.info$/.test(location.hostname)
+  ? "api"
+  : "https://yume-nikki-proxy.yumenikki-api.workers.dev";
 
 /* ========== IndexedDB ========== */
 const DB_NAME = "dreamDiary";

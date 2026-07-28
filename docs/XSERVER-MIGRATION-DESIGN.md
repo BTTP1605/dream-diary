@@ -61,9 +61,23 @@ app/
 - プロンプト・応答スキーマは `worker/gemini-proxy.js` の内容をそのまま移植(用途固定は維持)
 - Geminiキーは `_private/config.php` に定義(`<?php return [...];` 形式)。webからは403、
   Gitにはコミットしない(xserver-deployの `.local` 慣例に従いローカルは `config.local.php` で管理)
-- レート制限: SQLiteでIP/日・全体/日をカウント。KVと違い原子的に更新できるため
-  連打すり抜けなし。上限は現行踏襲(IP 40回/日・全体 400回/日)し、Phase 2で会員単位に変更
+- レート制限: ゲームと同じファイルベース(flockで原子的に加算)でIP/日・全体/日をカウント。
+  KVと違い連打すり抜けなし。上限は現行踏襲(IP 40回/日・全体 400回/日)し、Phase 2で会員単位に変更。
+  SQLiteの導入はPhase 3(記録保存)から
 - 429時の flash→flash-lite フォールバックも移植
+- Worker版からの改善: GeminiキーをURLクエリでなく専用ヘッダー(x-goog-api-key)で送る
+  (アクセスログ類にキーが残らない)
+
+**本番反映・E2E検証済み(2026-07-29)**: https://bttp.info/app/dream-diary/ で稼働中。
+検証項目: index 200 / `_private/config.php` 403 / `_lib.php` 403 / GET 404 / 空text 400 /
+analyze・image-prompt 本番呼び出し200(スキーマ・文字数とも仕様どおり) / 本番ドメインでPROXY_BASE="api"自動選択。
+PHP一式は本リポジトリ `server/` に格納
+(`server/api/*.php`、`server/htaccess-*`、`server/_private/`)。
+アプリ側は `app.js` の PROXY_BASE が `location.hostname` で自動切替
+(bttp.info→同一オリジン `api`、それ以外→Worker)。
+デプロイは `xserver-deploy` の `node deploy.mjs --app dream-diary`
+(app@bttp.info アカウント使用、Geminiキーは `.xserver-app-config.local.php` から
+`/app/_private/config.php` へ自動アップロード)。
 
 ### アプリ側の変更(dream-diary)
 

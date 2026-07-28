@@ -1,0 +1,20 @@
+# /app/dream-diary/.htaccess  (デプロイスクリプトが配置する)
+
+# アプリ側は PROXY_BASE + "/analyze" 形式で呼ぶため、.php拡張子へ内部転送する
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^api/analyze$ api/analyze.php [L]
+  RewriteRule ^api/image-prompt$ api/image-prompt.php [L]
+</IfModule>
+
+# ライブラリ本体は直接アクセス不可(関数定義のみだが念のため)
+<Files "_lib.php">
+  Require all denied
+</Files>
+
+# HTML/JS/CSSは常に最新を配信(会員の端末に更新を確実に届ける)
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

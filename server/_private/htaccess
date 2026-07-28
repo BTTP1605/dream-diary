@@ -1,0 +1,2 @@
+# /app/_private/.htaccess  (直アクセス全遮断。ルートのRedirectMatchと二重の保険)
+Require all denied
