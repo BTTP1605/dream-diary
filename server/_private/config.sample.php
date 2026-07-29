@@ -22,4 +22,7 @@ return [
     'dream-diary' => ['token' => 'ここに夢日記用トークン', 'active' => true],
     // 'lucid-dream' => ['token' => '移行時に追加', 'active' => true],
   ],
+
+  // 利用状況ダッシュボード(/app/stats.php)のオーナー用アクセスキー(ランダム値)
+  'admin_key' => 'ここにダッシュボード用キー',
 ];
