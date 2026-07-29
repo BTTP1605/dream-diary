@@ -127,6 +127,15 @@ PHP一式は本リポジトリ `server/` に格納
 
 - **明晰夢にも専用の解錠リンクを発行する**(`unlock.php?a=lucid-dream&t=<専用TOKEN>`)。
   configの `apps` 配列に1行追加するだけで対応できる
+
+**本番反映・E2E検証済み(2026-07-29)**: https://bttp.info/app/lucid-dream/ で稼働中。
+lucid-dream-appリポジトリの `server/index.php`(Cookie検証→_privateの実体を配信)+
+`server/htaccess-lucid-dream`(DirectoryIndex index.php・index.html直アクセス拒否・
+ハッシュ付きアセット長期キャッシュ)。デプロイは `node deploy.mjs --app lucid-dream`
+(build出力をアップロードし、index.htmlを /_private/lucid-dream-index.html へ自動移設)。
+検証項目: 未解錠403+案内 / index.html直403 / _private直403 / 専用リンク302+専用Cookie /
+正Cookieで200+React配信 / 夢日記Cookieでは403(アプリ間分離) / JS・音声アセット200。
+※github.io版(gh-pages)は無変更のまま併存中
 - lucid-dream にはAPIがないため、ページ本体をゲートする:
   - ビルド出力の `index.html` は `_private/lucid-dream-index.html` に置き(Web直アクセス不可)、
     公開側は `index.php` が会員Cookieを検証してからその中身を出力する。
