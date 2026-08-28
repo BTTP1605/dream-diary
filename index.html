@@ -21,19 +21,9 @@
 
   <!-- 一覧画面 -->
   <section id="view-list" class="view">
-    <!-- 今日の記録があるときだけ出る。記録した夢から導いた、その日の小さな行動 -->
-    <section id="today-step" class="step-card" hidden>
-      <h2 class="step-heading">🌱 今日の一歩</h2>
-      <p id="today-step-action" class="step-action"></p>
-      <p id="today-step-because" class="step-because"></p>
-      <div class="step-foot">
-        <span id="today-step-minutes" class="step-minutes"></span>
-        <button id="today-step-done" class="step-done"></button>
-      </div>
-    </section>
-
+    <!-- 「今日の一歩」は一覧には出さない。常に目に入るとタスクの督促のようになり、
+         義務感が出て記録そのものが億劫になるため。詳細画面を開いたときだけ見えればよい -->
     <ul id="entry-list" class="entry-list"></ul>
-    <p id="step-total" class="step-total" hidden></p>
     <p id="empty-message" class="empty-message" hidden>
       まだ夢の記録がありません。<br>
       右下の「＋」から昨日見た夢を記録してみましょう。
@@ -79,10 +69,9 @@
       <h3 class="step-heading">🌱 今日の一歩</h3>
       <p id="detail-step-action" class="step-action"></p>
       <p id="detail-step-because" class="step-because"></p>
-      <div class="step-foot">
-        <span id="detail-step-minutes" class="step-minutes"></span>
-        <button id="detail-step-done" class="step-done"></button>
-      </div>
+      <!-- 完了ボタンも所要時間も置かない。チェックできる状態や「何分かかる」の表示は
+           達成の管理に見え、やらなかった日に負い目が残る。静かな提案として置くだけにする。
+           なお minutes は生成側では残している(行動の大きさを縛る制約として効くため) -->
     </section>
     <h3>💬 元のテキスト</h3>
     <p id="detail-original" class="detail-text original"></p>
