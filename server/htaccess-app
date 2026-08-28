@@ -7,4 +7,17 @@ RedirectMatch 403 ^/app/_private/
   Header set X-Content-Type-Options "nosniff"
   Header set Referrer-Policy "no-referrer"
   Header set X-Frame-Options "SAMEORIGIN"
+
+  # アプリの入口(index.html)は毎回サーバーに確認させる。/games/ 側と同じ扱い。
+  # これが無いと Cache-Control が一切付かず、ブラウザのヒューリスティックキャッシュで
+  # 古い index.html を掴んだままになり、デプロイしても更新に気づかない
+  # (実測: マップの更新直後に1世代前のJSを読み込んだ)。
+  # assets/ はViteのハッシュ付き名なので、入口さえ最新なら必ず新しい方を読む。
+  #
+  # 注意: このサーバーは If-None-Match(ETag) を無視する(If-Modified-Since なら304を返す)。
+  # HTMLについては条件付きでも200で本文が返ってくるのを実測した。つまり毎回1KB前後を
+  # 送り直すことになるが、入口が古いままアプリが更新されない事故のほうが高くつく。
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
 </IfModule>
