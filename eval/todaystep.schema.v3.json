@@ -1,0 +1,20 @@
+{
+  "type": "OBJECT",
+  "properties": {
+    "title":       { "type": "STRING" },
+    "summary":     { "type": "STRING" },
+    "analysis":    { "type": "STRING" },
+    "imagePrompt": { "type": "STRING" },
+    "todayStep": {
+      "type": "OBJECT",
+      "properties": {
+        "category": { "type": "STRING", "enum": ["contact","tidy","move","look","rest","close","write"] },
+        "action":   { "type": "STRING" },
+        "because":  { "type": "STRING" },
+        "minutes":  { "type": "INTEGER" }
+      },
+      "required": ["category","action","because","minutes"]
+    }
+  },
+  "required": ["title","summary","analysis","imagePrompt","todayStep"]
+}

@@ -17,6 +17,51 @@ const PROXY_BASE = /(^|\.)bttp\.info$/.test(location.hostname)
   ? "api"
   : "https://yume-nikki-proxy.yumenikki-api.workers.dev";
 
+/* ========== 「今日の一歩」の指示(3箇所で同じ文言を使う) ==========
+   同じ内容を worker/gemini-proxy.js と server/api/_lib.php にも持たせている。
+   片方だけ直すと、自分のキーを使う人とコミュニティ経由の人で結果が変わるので必ず3箇所そろえること。
+   文言の検証は eval/README.md を参照(実際の記録14件で分布を見る) */
+const TODAY_STEP_PROMPT = `- todayStep: この夢の分析をふまえ、今日中にできる小さな行動を1つだけ提案する。次の順序で考えること。
+
+  1. category: まず次の7つから1つ選ぶ。夢に出てきた場面・動作・物に最も近いものを選ぶこと。
+     - contact : 誰かへの連絡を下書きだけする
+     - tidy    : 部屋や持ち物を1箇所だけ片付ける
+     - move    : 体を動かす(歩く、伸ばす、外に出る)
+     - look    : 気になっていることを短時間だけ調べる、または見返す
+     - rest    : 意図的に何もしない時間をとる
+     - close   : 保留にしていることに区切りをつける(返事をする、断る、閉じる)
+     - write   : 頭の中にあることを紙に書き出す
+     ※ write は最後の選択肢とする。他の6つのどれにも当てはまらない場合にだけ選ぶこと。
+
+  2. action: 選んだ category に沿った具体的な行動。5〜15分で終わり、一人で完結すること。
+     - 25文字以上30文字以内。30文字を超えてはならない。
+     - 動詞で終える。文末に句点(。)をつけない。
+     - 「気になっていること」「必要なもの」のような曖昧な対象は使わず、夢に出てきた具体的な対象を必ず名指しすること。
+     - 「深呼吸する」「温かい飲み物を飲む」のような、どの夢にも当てはまる決まり文句は使わない。
+     - 相手のいる行動は「下書きする」「候補を書き出す」など自分の側で完結する手前で止める。
+
+  3. because: なぜその行動なのかを述べる。
+     - 35文字以上40文字以内。40文字を超えてはならない。
+     - 夢に実際に出てきた語を引用する。引用は10文字程度までに短く切り、そのあとに理由を続けること。
+     - 一般論(「不安の表れ」など)ではなく、この夢にしかない具体物を使う。
+
+  4. minutes: 1〜15の整数。action に書いた行動を実際に終えるのにかかる時間。
+
+  禁止: 受診・服薬・健康の判断、金銭の支出や投資、退職・離婚・絶縁などの重大な決断、他者への詰問。夢の感情が強くつらいものだった場合は rest を選ぶこと。`;
+
+/* categoryを先頭に置くこと。actionを先に書かせると、モデルが行動を決めてから
+   後付けでcategoryを選ぶため型から選ばせる設計が効かず、提案がwriteに偏る(実測) */
+const TODAY_STEP_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    category: { type: "STRING", enum: ["contact", "tidy", "move", "look", "rest", "close", "write"] },
+    action: { type: "STRING" },
+    because: { type: "STRING" },
+    minutes: { type: "INTEGER" },
+  },
+  required: ["category", "action", "because", "minutes"],
+};
+
 /* ========== IndexedDB ========== */
 const DB_NAME = "dreamDiary";
 const STORE = "entries";
@@ -87,6 +132,7 @@ function showView(id) {
 
 /* ========== 一覧 ========== */
 let listImageUrls = []; // サムネイル用Object URL。再描画時に解放する
+let todayStepId = null; // 一覧の先頭に出している「今日の一歩」の記録ID
 
 async function renderList() {
   const entries = (await dbGetAll()).sort((a, b) => b.id - a.id);
@@ -95,6 +141,17 @@ async function renderList() {
   listImageUrls.forEach(u => URL.revokeObjectURL(u));
   listImageUrls = [];
   document.getElementById("empty-message").hidden = entries.length > 0;
+
+  // 今日の記録があれば、その一歩を一覧の先頭に出す。
+  // 記録するためだけでなく、昼に開く理由をアプリに持たせるのが狙い
+  const todayEntry = todaysStepEntry(entries);
+  todayStepId = todayEntry ? todayEntry.id : null;
+  fillStep("today-step", todayEntry ? todayEntry.todayStep : null);
+
+  const doneCount = entries.filter(e => e.todayStep && e.todayStep.doneAt).length;
+  const total = document.getElementById("step-total");
+  total.hidden = doneCount === 0;
+  total.textContent = `🌱 これまでにやった一歩: ${doneCount}`;
 
   for (const e of entries) {
     const li = document.createElement("li");
@@ -165,7 +222,48 @@ async function openDetail(id) {
   document.getElementById("detail-summary").textContent = e.summary;
   document.getElementById("detail-analysis").textContent = e.analysis;
   document.getElementById("detail-original").textContent = e.originalText;
+  fillStep("detail-step", e.todayStep);
   showView("view-detail");
+}
+
+/* ========== 今日の一歩 ==========
+   夢分析から導いた、その日にできる小さな行動。「やった」は押し直しで取り消せる。
+   連続日数(ストリーク)は意図的に出さない。できなかった日に罪悪感が出て、
+   記録そのものをやめてしまうと本末転倒なため。累計だけを見せる */
+
+// prefix + "-action" のような組で要素を引く。詳細画面と一覧のカードで同じ描画を使う
+function fillStep(prefix, step) {
+  const root = document.getElementById(prefix);
+  if (!root) return;
+  if (!step || !step.action) {
+    root.hidden = true;
+    return;
+  }
+  root.hidden = false;
+  document.getElementById(`${prefix}-action`).textContent = step.action;
+  document.getElementById(`${prefix}-because`).textContent = step.because || "";
+  document.getElementById(`${prefix}-minutes`).textContent = step.minutes ? `🕐 ${step.minutes}分` : "";
+  const btn = document.getElementById(`${prefix}-done`);
+  btn.textContent = step.doneAt ? "✓ やった" : "やった";
+  btn.classList.toggle("done", !!step.doneAt);
+}
+
+// 押すたびに「やった / 未着手」を切り替える。誤タップを取り返せないと押されなくなるため
+async function toggleStepDone(id) {
+  const e = await dbGet(id);
+  if (!e || !e.todayStep) return null;
+  e.todayStep.doneAt = e.todayStep.doneAt ? null : Date.now();
+  await dbPut(e);
+  return e;
+}
+
+// その日に記録した夢のうち最後の1件。1日に複数記録しても一歩は1つに絞る
+function todaysStepEntry(entries) {
+  const n = new Date();
+  const startOfToday = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+  return entries
+    .filter(e => e.id >= startOfToday && e.todayStep && e.todayStep.action)
+    .sort((a, b) => b.id - a.id)[0] || null;
 }
 
 /* ========== Gemini API ========== */
@@ -226,7 +324,8 @@ ${text}
 - title: 夢の内容を表す印象的な短いタイトル(15文字以内、日本語)
 - summary: 夢の概要(2〜3文、日本語)
 - analysis: 夢分析。夢に登場するシンボルや感情から、心理状態や深層心理をやさしく読み解く(200〜300文字、日本語。断定しすぎず、前向きな締めくくりに)
-- imagePrompt: この夢の最も印象的なワンシーンを画像生成AIで再現するための詳細な英語プロンプト。幻想的で映画のワンシーンのような雰囲気。夢の中で特に指定がない限り、登場人物は日本人(Japanese)、舞台は日本(Japan)とすること。`;
+- imagePrompt: この夢の最も印象的なワンシーンを画像生成AIで再現するための詳細な英語プロンプト。幻想的で映画のワンシーンのような雰囲気。夢の中で特に指定がない限り、登場人物は日本人(Japanese)、舞台は日本(Japan)とすること。
+${TODAY_STEP_PROMPT}`;
 
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -239,8 +338,9 @@ ${text}
           summary: { type: "STRING" },
           analysis: { type: "STRING" },
           imagePrompt: { type: "STRING" },
+          todayStep: TODAY_STEP_SCHEMA,
         },
-        required: ["title", "summary", "analysis", "imagePrompt"],
+        required: ["title", "summary", "analysis", "imagePrompt", "todayStep"],
       },
     },
   };
@@ -588,6 +688,10 @@ async function saveDream() {
       image,
     };
     if (pendingJob) entry.pendingJob = pendingJob;
+    // プロキシ側(Worker/PHP)が古いままだと todayStep が返らないため、無い場合は付けない
+    if (result.todayStep && result.todayStep.action) {
+      entry.todayStep = { ...result.todayStep, doneAt: null };
+    }
     await dbPut(entry);
 
     document.getElementById("dream-input").value = "";
@@ -809,6 +913,7 @@ async function exportBackup() {
         originalText: e.originalText,
       };
       if (e.imagePrompt) item.imagePrompt = e.imagePrompt;
+      if (e.todayStep) item.todayStep = e.todayStep;
       if (e.image) item.imageDataURL = await blobToDataURL(e.image);
       // pendingJob(AI Horde順番待ち)は他の端末では引き継げないため含めない
       items.push(item);
@@ -865,6 +970,7 @@ async function importBackup(file) {
         originalText: item.originalText,
       };
       if (item.imagePrompt) entry.imagePrompt = String(item.imagePrompt);
+      if (item.todayStep && item.todayStep.action) entry.todayStep = item.todayStep;
       if (typeof item.imageDataURL === "string") {
         try {
           entry.image = dataURLToBlob(item.imageDataURL);
@@ -996,6 +1102,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     showView("view-list");
   });
   document.getElementById("btn-regen-image").addEventListener("click", regenerateDetailImage);
+  document.getElementById("detail-step-done").addEventListener("click", async () => {
+    if (!currentDetailId) return;
+    const e = await toggleStepDone(currentDetailId);
+    if (e) fillStep("detail-step", e.todayStep);
+  });
+  document.getElementById("today-step-done").addEventListener("click", async () => {
+    if (!todayStepId) return;
+    await toggleStepDone(todayStepId);
+    await renderList(); // 累計の表示も一緒に更新する
+  });
   document.getElementById("btn-delete").addEventListener("click", async () => {
     if (currentDetailId && confirm("この夢の記録を削除しますか?")) {
       await dbDelete(currentDetailId);
