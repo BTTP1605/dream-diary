@@ -182,7 +182,7 @@ EOT;
 /* ---------- Gemini呼び出し(429時は軽量モデルへフォールバック) ---------- */
 
 const TEXT_MODEL = 'gemini-2.5-flash';
-const TEXT_MODEL_FALLBACK = 'gemini-2.5-flash-lite';
+const TEXT_MODEL_FALLBACK = 'gemini-3.5-flash-lite';
 
 // 成功時は生成テキストを返す。失敗時はjson_outで応答して終了
 function call_gemini(string $prompt, ?array $schema): string {

@@ -3,7 +3,7 @@
 /* ========== 定数 ========== */
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const TEXT_MODEL = "gemini-2.5-flash";
-const TEXT_MODEL_FALLBACK = "gemini-2.5-flash-lite";
+const TEXT_MODEL_FALLBACK = "gemini-3.5-flash-lite";
 const IMAGE_MODEL_CANDIDATES = ["gemini-3.1-flash-image", "gemini-2.5-flash-image"];
 const IMAGE_MODEL_STORAGE = "dreamDiary.imageModel";
 const HORDE_KEY_STORAGE = "dreamDiary.hordeKey";

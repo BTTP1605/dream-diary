@@ -18,7 +18,7 @@
 |---|---|---|
 | フロントエンド | 素のHTML/CSS/JS(ビルドなし) | `index.html` / `style.css` / `app.js` の3ファイル |
 | ホスティング | ローカル(http-server)→将来GitHub Pages予定 | 静的サイトなのでどこでも動く |
-| 夢分析(テキスト) | Gemini API `gemini-2.5-flash`(429時 `gemini-2.5-flash-lite` に自動フォールバック) | 無料枠で動作確認済み |
+| 夢分析(テキスト) | Gemini API `gemini-2.5-flash`(429時 `gemini-3.5-flash-lite` に自動フォールバック) | 無料枠で動作確認済み |
 | 画像生成 | ①Gemini画像モデル(自動検出)→②FLUX.1-schnell(HF公式Space・キー不要)→③AI Horde | 経緯は下記 |
 | 音声入力 | Web Speech API(`webkitSpeechRecognition`, ja-JP) | https または localhost でのみ動作 |
 | データ保存 | IndexedDB(DB名 `dreamDiary` / ストア `entries`) | 画像はBlobで保存。すべて端末内 |
