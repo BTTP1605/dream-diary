@@ -339,3 +339,81 @@ textarea:focus, input:focus {
 }
 
 .note a { color: var(--accent); }
+
+/* ---------- 今日の一歩 ---------- */
+/* 夢分析から導いた、その日にできる小さな行動。一覧の先頭と詳細画面の両方に同じ形で出す */
+.step-card {
+  background: var(--bg-card);
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+/* 詳細画面では見出しの間隔を他のh3と揃える */
+#detail-step { margin-top: 8px; }
+
+.step-heading {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.step-action {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.step-because {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+
+.step-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.step-minutes {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.step-done {
+  margin-left: auto;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.step-done:hover, .step-done:focus-visible {
+  background: rgba(143, 123, 255, 0.18);
+}
+
+.step-done.done {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 連続日数は出さない。できなかった日に罪悪感が出て記録自体をやめてしまうため */
+.step-total {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}

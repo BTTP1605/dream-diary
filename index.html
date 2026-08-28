@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#141230">
 <title>夢日記</title>
+<link rel="icon" href="./favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,7 +21,19 @@
 
   <!-- 一覧画面 -->
   <section id="view-list" class="view">
+    <!-- 今日の記録があるときだけ出る。記録した夢から導いた、その日の小さな行動 -->
+    <section id="today-step" class="step-card" hidden>
+      <h2 class="step-heading">🌱 今日の一歩</h2>
+      <p id="today-step-action" class="step-action"></p>
+      <p id="today-step-because" class="step-because"></p>
+      <div class="step-foot">
+        <span id="today-step-minutes" class="step-minutes"></span>
+        <button id="today-step-done" class="step-done"></button>
+      </div>
+    </section>
+
     <ul id="entry-list" class="entry-list"></ul>
+    <p id="step-total" class="step-total" hidden></p>
     <p id="empty-message" class="empty-message" hidden>
       まだ夢の記録がありません。<br>
       右下の「＋」から昨日見た夢を記録してみましょう。
@@ -59,6 +74,16 @@
     <p id="detail-summary" class="detail-text"></p>
     <h3>🔮 夢分析</h3>
     <p id="detail-analysis" class="detail-text"></p>
+    <!-- 古い記録には todayStep が無いので、その場合はJS側で丸ごと隠す -->
+    <section id="detail-step" class="step-card" hidden>
+      <h3 class="step-heading">🌱 今日の一歩</h3>
+      <p id="detail-step-action" class="step-action"></p>
+      <p id="detail-step-because" class="step-because"></p>
+      <div class="step-foot">
+        <span id="detail-step-minutes" class="step-minutes"></span>
+        <button id="detail-step-done" class="step-done"></button>
+      </div>
+    </section>
     <h3>💬 元のテキスト</h3>
     <p id="detail-original" class="detail-text original"></p>
     <button id="btn-delete" class="danger-btn">この記録を削除</button>
