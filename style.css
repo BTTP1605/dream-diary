@@ -341,7 +341,9 @@ textarea:focus, input:focus {
 .note a { color: var(--accent); }
 
 /* ---------- 今日の一歩 ---------- */
-/* 夢分析から導いた、その日にできる小さな行動。一覧の先頭と詳細画面の両方に同じ形で出す */
+/* 夢分析から導いた、その日にできる小さな行動。詳細画面にだけ出す。
+   一覧には出さず、完了ボタンも所要時間も置かない。行動を促す部品を並べるほど
+   提案ではなく督促になり、やらなかった日に負い目が残って記録自体が億劫になるため */
 .step-card {
   background: var(--bg-card);
   border: 1px solid var(--accent-strong);
@@ -371,49 +373,5 @@ textarea:focus, input:focus {
   margin: 0;
   font-size: 0.85rem;
   line-height: 1.7;
-  color: var(--text-dim);
-}
-
-.step-foot {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.step-minutes {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  flex-shrink: 0;
-}
-
-.step-done {
-  margin-left: auto;
-  padding: 8px 20px;
-  border-radius: 999px;
-  border: 1px solid var(--accent);
-  background: transparent;
-  color: var(--text);
-  font-size: 0.9rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.step-done:hover, .step-done:focus-visible {
-  background: rgba(143, 123, 255, 0.18);
-}
-
-.step-done.done {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: #fff;
-  font-weight: 700;
-}
-
-/* 連続日数は出さない。できなかった日に罪悪感が出て記録自体をやめてしまうため */
-.step-total {
-  margin: 20px 0 0;
-  text-align: center;
-  font-size: 0.85rem;
   color: var(--text-dim);
 }

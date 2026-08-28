@@ -132,7 +132,6 @@ function showView(id) {
 
 /* ========== 一覧 ========== */
 let listImageUrls = []; // サムネイル用Object URL。再描画時に解放する
-let todayStepId = null; // 一覧の先頭に出している「今日の一歩」の記録ID
 
 async function renderList() {
   const entries = (await dbGetAll()).sort((a, b) => b.id - a.id);
@@ -141,17 +140,6 @@ async function renderList() {
   listImageUrls.forEach(u => URL.revokeObjectURL(u));
   listImageUrls = [];
   document.getElementById("empty-message").hidden = entries.length > 0;
-
-  // 今日の記録があれば、その一歩を一覧の先頭に出す。
-  // 記録するためだけでなく、昼に開く理由をアプリに持たせるのが狙い
-  const todayEntry = todaysStepEntry(entries);
-  todayStepId = todayEntry ? todayEntry.id : null;
-  fillStep("today-step", todayEntry ? todayEntry.todayStep : null);
-
-  const doneCount = entries.filter(e => e.todayStep && e.todayStep.doneAt).length;
-  const total = document.getElementById("step-total");
-  total.hidden = doneCount === 0;
-  total.textContent = `🌱 これまでにやった一歩: ${doneCount}`;
 
   for (const e of entries) {
     const li = document.createElement("li");
@@ -227,11 +215,17 @@ async function openDetail(id) {
 }
 
 /* ========== 今日の一歩 ==========
-   夢分析から導いた、その日にできる小さな行動。「やった」は押し直しで取り消せる。
-   連続日数(ストリーク)は意図的に出さない。できなかった日に罪悪感が出て、
-   記録そのものをやめてしまうと本末転倒なため。累計だけを見せる */
+   夢分析から導いた、その日にできる小さな行動。詳細画面を開いたときにだけ見える。
 
-// prefix + "-action" のような組で要素を引く。詳細画面と一覧のカードで同じ描画を使う
+   一覧には出さない。完了ボタンも累計も所要時間も表示しない。
+   行動を促す部品を並べるほど、提案ではなくタスクの督促になり、やらなかった日に
+   負い目が残って記録そのものが億劫になる
+   (一覧に出し完了ボタンを付けた版を実際に使い「義務感を感じてうっとうしい」と判断して外した)。
+
+   minutes は生成側のスキーマには残してある。表示しないが「5〜15分で終わること」という
+   制約が action の大きさを縛っており、外すと提案が重くなるため。 */
+
+// prefix + "-action" のような組で要素を引く
 function fillStep(prefix, step) {
   const root = document.getElementById(prefix);
   if (!root) return;
@@ -242,28 +236,6 @@ function fillStep(prefix, step) {
   root.hidden = false;
   document.getElementById(`${prefix}-action`).textContent = step.action;
   document.getElementById(`${prefix}-because`).textContent = step.because || "";
-  document.getElementById(`${prefix}-minutes`).textContent = step.minutes ? `🕐 ${step.minutes}分` : "";
-  const btn = document.getElementById(`${prefix}-done`);
-  btn.textContent = step.doneAt ? "✓ やった" : "やった";
-  btn.classList.toggle("done", !!step.doneAt);
-}
-
-// 押すたびに「やった / 未着手」を切り替える。誤タップを取り返せないと押されなくなるため
-async function toggleStepDone(id) {
-  const e = await dbGet(id);
-  if (!e || !e.todayStep) return null;
-  e.todayStep.doneAt = e.todayStep.doneAt ? null : Date.now();
-  await dbPut(e);
-  return e;
-}
-
-// その日に記録した夢のうち最後の1件。1日に複数記録しても一歩は1つに絞る
-function todaysStepEntry(entries) {
-  const n = new Date();
-  const startOfToday = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
-  return entries
-    .filter(e => e.id >= startOfToday && e.todayStep && e.todayStep.action)
-    .sort((a, b) => b.id - a.id)[0] || null;
 }
 
 /* ========== Gemini API ========== */
@@ -690,7 +662,7 @@ async function saveDream() {
     if (pendingJob) entry.pendingJob = pendingJob;
     // プロキシ側(Worker/PHP)が古いままだと todayStep が返らないため、無い場合は付けない
     if (result.todayStep && result.todayStep.action) {
-      entry.todayStep = { ...result.todayStep, doneAt: null };
+      entry.todayStep = result.todayStep;
     }
     await dbPut(entry);
 
@@ -1102,16 +1074,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     showView("view-list");
   });
   document.getElementById("btn-regen-image").addEventListener("click", regenerateDetailImage);
-  document.getElementById("detail-step-done").addEventListener("click", async () => {
-    if (!currentDetailId) return;
-    const e = await toggleStepDone(currentDetailId);
-    if (e) fillStep("detail-step", e.todayStep);
-  });
-  document.getElementById("today-step-done").addEventListener("click", async () => {
-    if (!todayStepId) return;
-    await toggleStepDone(todayStepId);
-    await renderList(); // 累計の表示も一緒に更新する
-  });
   document.getElementById("btn-delete").addEventListener("click", async () => {
     if (currentDetailId && confirm("この夢の記録を削除しますか?")) {
       await dbDelete(currentDetailId);
