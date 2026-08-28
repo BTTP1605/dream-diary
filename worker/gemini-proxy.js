@@ -15,7 +15,7 @@ const ALLOWED_ORIGINS = [
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const TEXT_MODEL = "gemini-2.5-flash";
-const TEXT_MODEL_FALLBACK = "gemini-2.5-flash-lite";
+const TEXT_MODEL_FALLBACK = "gemini-3.5-flash-lite";
 
 export default {
   async fetch(request, env) {
